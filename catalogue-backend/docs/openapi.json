@@ -1,0 +1,397 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Library Catalogue API",
+    "version": "1.0.0",
+    "description": "RESTful API для каталогу бібліотеки",
+    "contact": {
+      "name": "Yana Dumanska & Nadiia Zinchuk"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api/v1",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    { "name": "Books", "description": "Управління книгами — Yana" },
+    { "name": "Authors", "description": "Управління авторами — Yana" },
+    { "name": "Categories", "description": "Управління категоріями — Yana" },
+    { "name": "Reviews", "description": "Відгуки та рейтинги — Yana" },
+    { "name": "Caching", "description": "Кешування (ETag, Cache-Control) — Yana" },
+    { "name": "Users", "description": "Користувачі та JWT — Nadiia" },
+    { "name": "Borrowings", "description": "Позики — Nadiia" },
+    { "name": "Reservations", "description": "Резервації — Nadiia" },
+    { "name": "System", "description": "Health check" }
+  ],
+  "paths": {
+    "/books": {
+      "get": {
+        "tags": ["Books", "Caching"],
+        "summary": "Список книг з фільтрами та пагінацією",
+        "description": "Підтримує 9 параметрів фільтрації, сортування, пагінацію. Кешується 5 хв.",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "search", "in": "query", "description": "Повнотекстовий пошук", "schema": { "type": "string" } },
+          { "name": "author", "in": "query", "schema": { "type": "string" } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["HARDCOVER", "PAPERBACK", "EBOOK", "AUDIOBOOK"] } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["AVAILABLE", "BORROWED", "RESERVED"] } },
+          { "name": "language", "in": "query", "schema": { "type": "string" } },
+          { "name": "min_rating", "in": "query", "schema": { "type": "number" } },
+          { "name": "sort", "in": "query", "description": "Формат: field:direction (напр. title:asc)", "schema": { "type": "string" } },
+          { "name": "published_after", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "published_before", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список книг",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string" }, "description": "public, max-age=300" },
+              "ETag": { "schema": { "type": "string" } },
+              "X-Total-Count": { "schema": { "type": "integer" } },
+              "X-Page": { "schema": { "type": "integer" } },
+              "X-Page-Size": { "schema": { "type": "integer" } }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Books"],
+        "summary": "Створити книгу",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["isbn", "title"],
+                "properties": {
+                  "isbn": { "type": "string" },
+                  "title": { "type": "string" },
+                  "subtitle": { "type": "string" },
+                  "description": { "type": "string" },
+                  "publication_date": { "type": "string", "format": "date" },
+                  "publisher": { "type": "string" },
+                  "page_count": { "type": "integer" },
+                  "language": { "type": "string" },
+                  "format": { "type": "string", "enum": ["HARDCOVER", "PAPERBACK", "EBOOK", "AUDIOBOOK"] },
+                  "shelf_location": { "type": "string" },
+                  "total_copies": { "type": "integer" },
+                  "available_copies": { "type": "integer" },
+                  "author_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+                  "category_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Книгу створено" },
+          "400": { "description": "Помилка валідації" },
+          "401": { "description": "Не авторизований" },
+          "403": { "description": "Недостатньо прав (Admin/Librarian)" }
+        }
+      }
+    },
+    "/books/{bookId}": {
+      "get": {
+        "tags": ["Books", "Caching"],
+        "summary": "Деталі книги",
+        "description": "Кешується 10 хв.",
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string" }, "description": "public, max-age=600" },
+              "ETag": { "schema": { "type": "string" } }
+            }
+          },
+          "404": { "description": "Не знайдено" }
+        }
+      },
+      "put": {
+        "tags": ["Books"],
+        "summary": "Оновити книгу повністю",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "description": "Не авторизований" },
+          "403": { "description": "Недостатньо прав" }
+        }
+      },
+      "patch": {
+        "tags": ["Books"],
+        "summary": "Частково оновити книгу",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "description": "Не авторизований" },
+          "403": { "description": "Недостатньо прав" }
+        }
+      },
+      "delete": {
+        "tags": ["Books"],
+        "summary": "Видалити книгу",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "204": { "description": "No Content" },
+          "401": { "description": "Не авторизований" },
+          "403": { "description": "Тільки Admin" }
+        }
+      }
+    },
+    "/books/{bookId}/availability": {
+      "get": {
+        "tags": ["Books"],
+        "summary": "Перевірити доступність книги",
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/books/{bookId}/borrowing-history": {
+      "get": {
+        "tags": ["Books"],
+        "summary": "Історія позик книги",
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/books/{bookId}/reviews": {
+      "get": {
+        "tags": ["Reviews", "Caching"],
+        "summary": "Отримати відгуки книги",
+        "description": "Кешується 5 хв.",
+        "parameters": [
+          { "name": "bookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список відгуків",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string" }, "description": "public, max-age=300" },
+              "ETag": { "schema": { "type": "string" } }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Reviews"],
+        "summary": "Додати відгук до книги",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "bookId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["rating", "content"],
+                "properties": {
+                  "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+                  "title": { "type": "string" },
+                  "content": { "type": "string" },
+                  "spoiler_flag": { "type": "boolean", "default": false }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Відгук створено" },
+          "400": { "description": "Помилка валідації" },
+          "401": { "description": "Не авторизований" }
+        }
+      }
+    },
+    "/reviews/{reviewId}": {
+      "put": {
+        "tags": ["Reviews"],
+        "summary": "Оновити відгук (тільки власник)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "reviewId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "description": "Не авторизований" },
+          "403": { "description": "Не власник" }
+        }
+      },
+      "delete": {
+        "tags": ["Reviews"],
+        "summary": "Видалити відгук (власник або Admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "reviewId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "204": { "description": "No Content" },
+          "401": { "description": "Не авторизований" },
+          "403": { "description": "Не власник і не Admin" }
+        }
+      }
+    },
+    "/authors": {
+      "get": {
+        "tags": ["Authors", "Caching"],
+        "summary": "Список авторів",
+        "description": "Кешується 15 хв.",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "nationality", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string" }, "description": "public, max-age=900" },
+              "ETag": { "schema": { "type": "string" } }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Authors"],
+        "summary": "Створити автора",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "description": "Не авторизований" },
+          "403": { "description": "Недостатньо прав" }
+        }
+      }
+    },
+    "/authors/{authorId}": {
+      "get": {
+        "tags": ["Authors"],
+        "summary": "Деталі автора",
+        "parameters": [{ "name": "authorId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Не знайдено" } }
+      },
+      "put": {
+        "tags": ["Authors"],
+        "summary": "Оновити автора",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "authorId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "delete": {
+        "tags": ["Authors"],
+        "summary": "Видалити автора",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "authorId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "204": { "description": "No Content" } }
+      }
+    },
+    "/authors/{authorId}/books": {
+      "get": {
+        "tags": ["Authors"],
+        "summary": "Книги автора",
+        "parameters": [{ "name": "authorId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/categories": {
+      "get": {
+        "tags": ["Categories", "Caching"],
+        "summary": "Ієрархічне дерево категорій",
+        "description": "Повертає дерево категорій. Параметр flat=true — плаский список. Кешується 30 хв.",
+        "parameters": [
+          { "name": "flat", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "parent_id", "in": "query", "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Cache-Control": { "schema": { "type": "string" }, "description": "public, max-age=1800" },
+              "ETag": { "schema": { "type": "string" } }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Categories"],
+        "summary": "Створити категорію",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Created" },
+          "401": { "description": "Не авторизований" },
+          "403": { "description": "Тільки Admin" }
+        }
+      }
+    },
+    "/categories/{categoryId}": {
+      "get": {
+        "tags": ["Categories"],
+        "summary": "Деталі категорії",
+        "parameters": [{ "name": "categoryId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Не знайдено" } }
+      },
+      "put": {
+        "tags": ["Categories"],
+        "summary": "Оновити категорію",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "categoryId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "delete": {
+        "tags": ["Categories"],
+        "summary": "Видалити категорію",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "categoryId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "204": { "description": "No Content" } }
+      }
+    },
+    "/categories/{categoryId}/books": {
+      "get": {
+        "tags": ["Categories"],
+        "summary": "Книги категорії",
+        "parameters": [{ "name": "categoryId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "healthy",
+                  "version": "1.0.0",
+                  "uptime": "15d 4h 23m",
+                  "database": "connected",
+                  "cache": "operational"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
