@@ -12,7 +12,6 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,33 +22,33 @@ public interface BookRepository extends JpaRepository<BookEntity, UUID> {
 
     boolean existsByIsbn(String isbn);
 
-    List<BookEntity> findByStatus(BookStatus status);
-
-    @Query("SELECT b FROM BookEntity b WHERE b.availableCopies > 0")
-    List<BookEntity> findAvailableBooks();
-
     @Query("SELECT b FROM BookEntity b WHERE " +
-            "(:title IS NULL OR LOWER(b.title) LIKE LOWER(CONCAT('%', :title, '%'))) AND " +
-            "(:isbn IS NULL OR b.isbn = :isbn) AND " +
+            "(CAST(:search AS string) IS NULL OR b.title ILIKE CONCAT('%', CAST(:search AS string), '%') " +
+            "OR b.isbn ILIKE CONCAT('%', CAST(:search AS string), '%') " +
+            "OR b.description ILIKE CONCAT('%', CAST(:search AS string), '%')) AND " +
             "(:format IS NULL OR b.format = :format) AND " +
             "(:status IS NULL OR b.status = :status) AND " +
-            "(:minRating IS NULL OR b.averageRating >= :minRating)")
+            "(:language IS NULL OR b.language = :language) AND " +
+            "(:minRating IS NULL OR b.averageRating >= :minRating) AND " +
+            "(:publishedAfter IS NULL OR b.publicationDate >= :publishedAfter) AND " +
+            "(:publishedBefore IS NULL OR b.publicationDate <= :publishedBefore) AND " +
+            "(CAST(:authorName AS string) IS NULL OR EXISTS (SELECT 1 FROM b.authors a WHERE CONCAT(a.firstName, ' ', a.lastName) ILIKE CONCAT('%', CAST(:authorName AS string), '%'))) AND " +
+            "(CAST(:categoryName AS string) IS NULL OR EXISTS (SELECT 1 FROM b.categories c WHERE c.name ILIKE CONCAT('%', CAST(:categoryName AS string), '%')))")
     Page<BookEntity> findAllWithFilters(
-            @Param("title") String title,
-            @Param("isbn") String isbn,
+            @Param("search") String search,
             @Param("format") BookFormat format,
             @Param("status") BookStatus status,
+            @Param("language") String language,
             @Param("minRating") BigDecimal minRating,
-            Pageable pageable
-    );
+            @Param("publishedAfter") LocalDate publishedAfter,
+            @Param("publishedBefore") LocalDate publishedBefore,
+            @Param("authorName") String authorName,
+            @Param("categoryName") String categoryName,
+            Pageable pageable);
 
-    Page<BookEntity> findByTitleContainingIgnoreCase(String title, Pageable pageable);
+    @Query("SELECT b FROM BookEntity b JOIN b.authors a WHERE a.id = :authorId")
+    Page<BookEntity> findBooksByAuthorId(@Param("authorId") UUID authorId, Pageable pageable);
 
-    List<BookEntity> findTop10ByOrderByAverageRatingDesc();
-
-    @Query("UPDATE BookEntity b SET b.availableCopies = b.availableCopies - 1 WHERE b.id = :bookId AND b.availableCopies > 0")
-    int decrementAvailableCopies(@Param("bookId") UUID bookId);
-
-    @Query("UPDATE BookEntity b SET b.availableCopies = b.availableCopies + 1 WHERE b.id = :bookId AND b.availableCopies < b.totalCopies")
-    int incrementAvailableCopies(@Param("bookId") UUID bookId);
+    @Query("SELECT b FROM BookEntity b JOIN b.categories c WHERE c.id = :categoryId")
+    Page<BookEntity> findBooksByCategoryId(@Param("categoryId") UUID categoryId, Pageable pageable);
 }

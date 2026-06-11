@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -24,4 +25,7 @@ public class BookResponseDto {
     private BookStatus status;
     private Integer availableCopies;
     private BigDecimal averageRating;
+
+    private List<AuthorResponseDto> authors;
+    private List<CategoryResponseDto> categories;
 }

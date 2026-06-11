@@ -14,11 +14,10 @@ import java.util.UUID;
 @Repository
 public interface AuthorRepository extends JpaRepository<AuthorEntity, UUID> {
 
-    Page<AuthorEntity> findByLastNameContainingIgnoreCase(String lastName, Pageable pageable);
-
     List<AuthorEntity> findByNationality(String nationality);
 
     @Query("SELECT a FROM AuthorEntity a WHERE " +
-            "LOWER(CONCAT(a.firstName, ' ', a.lastName)) LIKE LOWER(CONCAT('%', :search, '%'))")
+            "a.firstName ILIKE CONCAT('%', :search, '%') OR " +
+            "a.lastName ILIKE CONCAT('%', :search, '%')")
     Page<AuthorEntity> searchByName(@Param("search") String search, Pageable pageable);
 }

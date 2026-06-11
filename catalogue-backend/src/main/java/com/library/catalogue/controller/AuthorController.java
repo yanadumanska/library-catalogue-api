@@ -2,7 +2,9 @@ package com.library.catalogue.controller;
 
 import com.library.catalogue.dto.AuthorRequestDto;
 import com.library.catalogue.dto.AuthorResponseDto;
+import com.library.catalogue.dto.BookResponseDto;
 import com.library.catalogue.service.AuthorService;
+import com.library.catalogue.service.BookService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,19 +23,21 @@ import java.util.UUID;
 public class AuthorController {
 
     private final AuthorService authorService;
+    private final BookService bookService;
 
     @GetMapping
     public ResponseEntity<Page<AuthorResponseDto>> getAllAuthors(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "lastName") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
             @RequestParam(required = false) String search) {
 
+        int pageIndex = Math.max(page - 1, 0);
         Sort sort = sortDir.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = PageRequest.of(pageIndex, size, sort);
 
         if (search != null && !search.isBlank()) {
             return ResponseEntity.ok(authorService.searchAuthors(search, pageable));
@@ -44,6 +48,15 @@ public class AuthorController {
     @GetMapping("/{id}")
     public ResponseEntity<AuthorResponseDto> getAuthorById(@PathVariable UUID id) {
         return ResponseEntity.ok(authorService.getAuthorById(id));
+    }
+
+    @GetMapping("/{id}/books")
+    public ResponseEntity<Page<BookResponseDto>> getAuthorBooks(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        int pageIndex = Math.max(page - 1, 0);
+        return ResponseEntity.ok(bookService.getBooksByAuthor(id, PageRequest.of(pageIndex, size)));
     }
 
     @PostMapping
