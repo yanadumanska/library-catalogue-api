@@ -1,10 +1,14 @@
 package com.library.catalogue.controller;
 
+import com.library.catalogue.dto.BookResponseDto;
 import com.library.catalogue.dto.CategoryRequestDto;
 import com.library.catalogue.dto.CategoryResponseDto;
+import com.library.catalogue.service.BookService;
 import com.library.catalogue.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +22,7 @@ import java.util.UUID;
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final BookService bookService;
 
     @GetMapping
     public ResponseEntity<List<CategoryResponseDto>> getCategories(
@@ -31,6 +36,15 @@ public class CategoryController {
     @GetMapping("/{id}")
     public ResponseEntity<CategoryResponseDto> getCategoryById(@PathVariable UUID id) {
         return ResponseEntity.ok(categoryService.getCategoryById(id));
+    }
+
+    @GetMapping("/{id}/books")
+    public ResponseEntity<Page<BookResponseDto>> getCategoryBooks(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        int pageIndex = Math.max(page - 1, 0);
+        return ResponseEntity.ok(bookService.getBooksByCategory(id, PageRequest.of(pageIndex, size)));
     }
 
     @PostMapping

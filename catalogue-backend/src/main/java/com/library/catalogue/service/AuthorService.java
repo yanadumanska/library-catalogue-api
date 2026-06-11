@@ -7,6 +7,8 @@ import com.library.catalogue.exception.AuthorNotFoundException;
 import com.library.catalogue.repository.AuthorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,16 +24,19 @@ public class AuthorService {
 
     private final AuthorRepository authorRepository;
 
+    @Cacheable(value = "authors", key = "#pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort")
     public Page<AuthorResponseDto> getAllAuthors(Pageable pageable) {
         return authorRepository.findAll(pageable)
                 .map(this::mapToResponseDto);
     }
 
+    @Cacheable(value = "authors", key = "'search-' + #search + '-' + #pageable.pageNumber")
     public Page<AuthorResponseDto> searchAuthors(String search, Pageable pageable) {
         return authorRepository.searchByName(search, pageable)
                 .map(this::mapToResponseDto);
     }
 
+    @Cacheable(value = "author", key = "#id")
     public AuthorResponseDto getAuthorById(UUID id) {
         return authorRepository.findById(id)
                 .map(this::mapToResponseDto)
@@ -44,6 +49,7 @@ public class AuthorService {
     }
 
     @Transactional
+    @CacheEvict(value = {"authors", "author"}, allEntries = true)
     public AuthorResponseDto createAuthor(AuthorRequestDto requestDto) {
         AuthorEntity author = AuthorEntity.builder()
                 .firstName(requestDto.getFirstName())
@@ -61,6 +67,7 @@ public class AuthorService {
     }
 
     @Transactional
+    @CacheEvict(value = {"authors", "author"}, allEntries = true)
     public AuthorResponseDto updateAuthor(UUID id, AuthorRequestDto requestDto) {
         AuthorEntity existing = getAuthorEntityById(id);
 
@@ -78,6 +85,7 @@ public class AuthorService {
     }
 
     @Transactional
+    @CacheEvict(value = {"authors", "author"}, allEntries = true)
     public void deleteAuthor(UUID id) {
         AuthorEntity author = getAuthorEntityById(id);
         authorRepository.delete(author);
