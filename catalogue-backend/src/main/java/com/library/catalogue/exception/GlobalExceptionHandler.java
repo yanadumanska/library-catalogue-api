@@ -19,6 +19,11 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
     }
 
+    @ExceptionHandler(AuthorNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthorNotFound(AuthorNotFoundException ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
+    }
+
     @ExceptionHandler(DuplicateIsbnException.class)
     public ResponseEntity<Map<String, Object>> handleDuplicateIsbn(DuplicateIsbnException ex) {
         return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
