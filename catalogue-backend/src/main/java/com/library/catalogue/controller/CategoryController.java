@@ -1,5 +1,6 @@
 package com.library.catalogue.controller;
 
+import com.library.catalogue.config.CachingConfig;
 import com.library.catalogue.dto.BookResponseDto;
 import com.library.catalogue.dto.CategoryRequestDto;
 import com.library.catalogue.dto.CategoryResponseDto;
@@ -28,9 +29,13 @@ public class CategoryController {
     public ResponseEntity<List<CategoryResponseDto>> getCategories(
             @RequestParam(defaultValue = "false") boolean flat) {
         if (flat) {
-            return ResponseEntity.ok(categoryService.getFlatCategories());
+            return ResponseEntity.ok()
+                    .cacheControl(CachingConfig.categoriesCache())
+                    .body(categoryService.getFlatCategories());
         }
-        return ResponseEntity.ok(categoryService.getCategoryTree());
+        return ResponseEntity.ok()
+                .cacheControl(CachingConfig.categoriesCache())
+                .body(categoryService.getCategoryTree());
     }
 
     @GetMapping("/{id}")
