@@ -188,10 +188,11 @@ Authorization: Bearer <JWT_TOKEN>
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
 | GET | `/books` | List all books (paginated) | No |
+| GET | `/books/{bookId}/authors` | Get book authors | No |
+| GET | `/books/{bookId}/categories` | Get book categories | No |
 | POST | `/books` | Create a new book | Yes (Admin/Librarian) |
 | GET | `/books/{bookId}` | Get book details | No |
 | PUT | `/books/{bookId}` | Update entire book | Yes (Admin/Librarian) |
-| PATCH | `/books/{bookId}` | Partial update book | Yes (Admin/Librarian) |
 | DELETE | `/books/{bookId}` | Remove book | Yes (Admin) |
 
 #### `GET /books` — Query Parameters
@@ -270,6 +271,7 @@ Location: /books/550e8400-e29b-41d4-a716-446655440000
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
 | GET | `/authors` | List authors (paginated) | No |
+| GET | `/authors/{authorId}/books` | Get books by author | No |
 | POST | `/authors` | Create author | Yes (Admin/Librarian) |
 | GET | `/authors/{authorId}` | Get author details | No |
 | PUT | `/authors/{authorId}` | Update author | Yes (Admin/Librarian) |
@@ -295,6 +297,7 @@ Location: /books/550e8400-e29b-41d4-a716-446655440000
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
 | GET | `/categories` | List categories | No |
+| GET | `/categories/{categoryId}/books` | Get books by category | No |
 | POST | `/categories` | Create category | Yes (Admin) |
 | GET | `/categories/{categoryId}` | Get category details | No |
 | PUT | `/categories/{categoryId}` | Update category | Yes (Admin) |
@@ -450,38 +453,11 @@ Location: /books/550e8400-e29b-41d4-a716-446655440000
 
 ---
 
-## 5. HATEOAS Implementation (Richardson Maturity Model Level 3)
-
-Each resource includes a `_links` property for navigation.
-
-#### Example Book Response
-
-```json
-{
-  "data": {
-    "id": "book-uuid",
-    "title": "Clean Code",
-    "isbn": "978-0132350884",
-    "status": "AVAILABLE",
-    "_links": {
-      "self": {"href": "/books/book-uuid"},
-      "authors": {"href": "/books/book-uuid/authors"},
-      "categories": {"href": "/books/book-uuid/categories"},
-      "reviews": {"href": "/books/book-uuid/reviews"},
-      "borrow": {"href": "/borrowings", "method": "POST"},
-      "reserve": {"href": "/reservations", "method": "POST"}
-    }
-  }
-}
-```
-
----
-
 ## 6. Status Codes
 
 | Status Code | Meaning | Usage |
 |-------------|---------|-------|
-| 200 | OK | Successful request — GET, PUT, PATCH operations |
+| 200 | OK | Successful request — GET, PUT,  operations |
 | 201 | Created | Resource created — POST operations |
 | 204 | No Content | Successful deletion — DELETE operations |
 | 304 | Not Modified | Resource not modified — Conditional GET with ETag/If-None-Match |
@@ -534,7 +510,7 @@ Each resource includes a `_links` property for navigation.
 
 ### Non-Cacheable Resources
 
-- `POST`/`PUT`/`PATCH`/`DELETE` operations (mutations)
+- `POST`/`PUT`/`DELETE` operations (mutations)
 - User profile (`GET /users/me`) — Contains personal data
 - Borrowings — Time-sensitive availability data
 - Reservations — Real-time state required
@@ -674,4 +650,3 @@ GET /api/v1/health
   "database": "connected",
   "cache": "operational"
 }
-```****
