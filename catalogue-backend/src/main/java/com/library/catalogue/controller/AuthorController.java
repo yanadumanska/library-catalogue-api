@@ -1,5 +1,6 @@
 package com.library.catalogue.controller;
 
+import com.library.catalogue.config.CachingConfig;
 import com.library.catalogue.dto.AuthorRequestDto;
 import com.library.catalogue.dto.AuthorResponseDto;
 import com.library.catalogue.dto.BookResponseDto;
@@ -40,9 +41,13 @@ public class AuthorController {
         Pageable pageable = PageRequest.of(pageIndex, size, sort);
 
         if (search != null && !search.isBlank()) {
-            return ResponseEntity.ok(authorService.searchAuthors(search, pageable));
+            return ResponseEntity.ok()
+                    .cacheControl(CachingConfig.authorsCache())
+                    .body(authorService.searchAuthors(search, pageable));
         }
-        return ResponseEntity.ok(authorService.getAllAuthors(pageable));
+        return ResponseEntity.ok()
+                .cacheControl(CachingConfig.authorsCache())
+                .body(authorService.getAllAuthors(pageable));
     }
 
     @GetMapping("/{id}")
