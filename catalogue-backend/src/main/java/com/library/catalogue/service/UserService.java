@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -59,6 +60,29 @@ public class UserService {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return mapToDto(user);
+    }
+
+    public List<UserDto> getAllUsers() {
+        return userRepository.findAll()
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Transactional
+    public UserDto updateUserStatus(UUID id, String status, String role) {
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (status != null) {
+            user.setMembershipStatus(status);
+        }
+        if (role != null) {
+            user.setRole(role);
+        }
+
+        UserEntity saved = userRepository.save(user);
+        return mapToDto(saved);
     }
 
     private JwtResponse buildJwtResponse(UserEntity user) {
