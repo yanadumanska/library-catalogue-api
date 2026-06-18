@@ -1,13 +1,17 @@
 package com.library.catalogue.service;
 
+import com.library.catalogue.dto.AuthorResponseDto;
 import com.library.catalogue.dto.BookResponseDto;
 import com.library.catalogue.dto.BookRequestDto;
+import com.library.catalogue.dto.CategoryResponseDto;
 import com.library.catalogue.entity.BookEntity;
+import com.library.catalogue.enums.BookFormat;
 import com.library.catalogue.enums.BookStatus;
 import com.library.catalogue.exception.BookNotFoundException;
 import com.library.catalogue.exception.DuplicateIsbnException;
-import com.library.catalogue.exception.InsufficientCopiesException;
+import com.library.catalogue.repository.AuthorRepository;
 import com.library.catalogue.repository.BookRepository;
+import com.library.catalogue.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -18,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,10 +33,17 @@ import java.util.UUID;
 public class BookService {
 
     private final BookRepository bookRepository;
+    private final AuthorRepository authorRepository;
+    private final CategoryRepository categoryRepository;
 
-    @Cacheable(value = "books", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
-    public Page<BookResponseDto> getAllBooks(Pageable pageable) {
-        return bookRepository.findAll(pageable)
+    @Cacheable(value = "books", key = "'filter-' + #pageable.pageNumber + '-' + #pageable.pageSize + '-' + #search + '-' + #format + '-' + #status + '-' + #language + '-' + #minRating + '-' + #authorName + '-' + #categoryName")
+    public Page<BookResponseDto> getBooksWithFilters(
+            String search, BookFormat format, BookStatus status, String language,
+            BigDecimal minRating, LocalDate publishedAfter, LocalDate publishedBefore,
+            String authorName, String categoryName, Pageable pageable) {
+        return bookRepository.findAllWithFilters(
+                        search, format, status, language, minRating,
+                        publishedAfter, publishedBefore, authorName, categoryName, pageable)
                 .map(this::mapToResponseDto);
     }
 
@@ -47,119 +59,100 @@ public class BookService {
                 .orElseThrow(() -> new BookNotFoundException(id));
     }
 
+    @Cacheable(value = "books", key = "'author-' + #authorId + '-' + #pageable.pageNumber")
+    public Page<BookResponseDto> getBooksByAuthor(UUID authorId, Pageable pageable) {
+        return bookRepository.findBooksByAuthorId(authorId, pageable)
+                .map(this::mapToResponseDto);
+    }
+
+    @Cacheable(value = "books", key = "'category-' + #categoryId + '-' + #pageable.pageNumber")
+    public Page<BookResponseDto> getBooksByCategory(UUID categoryId, Pageable pageable) {
+        return bookRepository.findBooksByCategoryId(categoryId, pageable)
+                .map(this::mapToResponseDto);
+    }
+
     @Transactional
-    @CacheEvict(value = {"books", "book", "availableBooks"}, allEntries = true)
+    @CacheEvict(value = {"books", "book"}, allEntries = true)
     public BookResponseDto createBook(BookRequestDto requestDto) {
         if (bookRepository.existsByIsbn(requestDto.getIsbn())) {
             throw new DuplicateIsbnException(requestDto.getIsbn());
         }
 
-        BookEntity book = BookEntity.builder()
-                .isbn(requestDto.getIsbn())
-                .title(requestDto.getTitle())
-                .subtitle(requestDto.getSubtitle())
-                .description(requestDto.getDescription())
-                .publicationDate(requestDto.getPublicationDate())
-                .publisher(requestDto.getPublisher())
-                .pageCount(requestDto.getPageCount())
-                .language(requestDto.getLanguage())
-                .format(requestDto.getFormat())
-                .shelfLocation(requestDto.getShelfLocation())
-                .totalCopies(requestDto.getTotalCopies())
-                .availableCopies(requestDto.getAvailableCopies())
-                .status(requestDto.getAvailableCopies() > 0 ? BookStatus.AVAILABLE : BookStatus.BORROWED)
-                .averageRating(BigDecimal.ZERO)
-                .build();
+        BookEntity book = buildBookEntity(requestDto);
+        setBookRelations(book, requestDto.getAuthorIds(), requestDto.getCategoryIds());
 
-        BookEntity savedBook = bookRepository.save(book);
-        log.info("Created new book: {} (ISBN: {})", savedBook.getTitle(), savedBook.getIsbn());
-
-        return mapToResponseDto(savedBook);
+        BookEntity saved = bookRepository.save(book);
+        log.info("Created book: {} (ISBN: {})", saved.getTitle(), saved.getIsbn());
+        return mapToResponseDto(saved);
     }
 
     @Transactional
-    @CacheEvict(value = {"books", "book", "availableBooks"}, allEntries = true)
+    @CacheEvict(value = {"books", "book"}, allEntries = true)
     public BookResponseDto updateBook(UUID id, BookRequestDto requestDto) {
         BookEntity existing = getBookEntityById(id);
+        updateBookFields(existing, requestDto);
+        setBookRelations(existing, requestDto.getAuthorIds(), requestDto.getCategoryIds());
 
-        existing.setTitle(requestDto.getTitle());
-        existing.setIsbn(requestDto.getIsbn());
-        existing.setSubtitle(requestDto.getSubtitle());
-        existing.setDescription(requestDto.getDescription());
-        existing.setPublicationDate(requestDto.getPublicationDate());
-        existing.setPublisher(requestDto.getPublisher());
-        existing.setPageCount(requestDto.getPageCount());
-        existing.setLanguage(requestDto.getLanguage());
-        existing.setFormat(requestDto.getFormat());
-        existing.setShelfLocation(requestDto.getShelfLocation());
-        existing.setTotalCopies(requestDto.getTotalCopies());
-        existing.setAvailableCopies(requestDto.getAvailableCopies());
-
-        BookEntity updatedBook = bookRepository.save(existing);
-        log.info("Updated book: {} (ID: {})", updatedBook.getTitle(), id);
-
-        return mapToResponseDto(updatedBook);
+        BookEntity updated = bookRepository.save(existing);
+        log.info("Updated book: {} (ID: {})", updated.getTitle(), id);
+        return mapToResponseDto(updated);
     }
 
     @Transactional
-    @CacheEvict(value = {"books", "book", "availableBooks"}, allEntries = true)
+    @CacheEvict(value = {"books", "book"}, allEntries = true)
     public void deleteBook(UUID id) {
         BookEntity book = getBookEntityById(id);
         bookRepository.delete(book);
         log.info("Deleted book: {} (ID: {})", book.getTitle(), id);
     }
 
-    @Cacheable(value = "availableBooks")
-    public List<BookResponseDto> getAvailableBooks() {
-        return bookRepository.findAvailableBooks()
-                .stream()
-                .map(this::mapToResponseDto)
-                .toList();
-    }
-
-    @Transactional
-    @CacheEvict(value = {"books", "book", "availableBooks"}, allEntries = true)
-    public void borrowBook(UUID id) {
-        BookEntity book = getBookEntityById(id);
-
-        if (book.getAvailableCopies() == null || book.getAvailableCopies() <= 0) {
-            throw new InsufficientCopiesException(book.getTitle());
-        }
-
-        book.setAvailableCopies(book.getAvailableCopies() - 1);
-
-        if (book.getAvailableCopies() == 0 && book.getStatus() != BookStatus.MAINTENANCE) {
-            book.setStatus(BookStatus.BORROWED);
-        }
-
-        bookRepository.save(book);
-        log.info("Book borrowed: {} (Available copies left: {})",
-                book.getTitle(), book.getAvailableCopies());
-    }
-
-    @Transactional
-    @CacheEvict(value = {"books", "book", "availableBooks"}, allEntries = true)
-    public void returnBook(UUID id) {
-        BookEntity book = getBookEntityById(id);
-
-        if (book.getAvailableCopies() == null || book.getAvailableCopies() >= book.getTotalCopies()) {
-            throw new RuntimeException("All copies are already available: " + book.getTitle());
-        }
-
-        book.setAvailableCopies(book.getAvailableCopies() + 1);
-
-        if (book.getStatus() == BookStatus.BORROWED && book.getAvailableCopies() > 0) {
-            book.setStatus(BookStatus.AVAILABLE);
-        }
-
-        bookRepository.save(book);
-        log.info("Book returned: {} (Available copies: {})",
-                book.getTitle(), book.getAvailableCopies());
-    }
-
     public boolean isBookAvailable(UUID id) {
         BookEntity book = getBookEntityById(id);
         return book.getAvailableCopies() != null && book.getAvailableCopies() > 0;
+    }
+
+    private BookEntity buildBookEntity(BookRequestDto dto) {
+        return BookEntity.builder()
+                .isbn(dto.getIsbn())
+                .title(dto.getTitle())
+                .subtitle(dto.getSubtitle())
+                .description(dto.getDescription())
+                .publicationDate(dto.getPublicationDate())
+                .publisher(dto.getPublisher())
+                .pageCount(dto.getPageCount())
+                .language(dto.getLanguage())
+                .format(dto.getFormat())
+                .shelfLocation(dto.getShelfLocation())
+                .totalCopies(dto.getTotalCopies())
+                .availableCopies(dto.getAvailableCopies())
+                .status(dto.getAvailableCopies() != null && dto.getAvailableCopies() > 0
+                        ? BookStatus.AVAILABLE : BookStatus.BORROWED)
+                .averageRating(BigDecimal.ZERO)
+                .build();
+    }
+
+    private void updateBookFields(BookEntity book, BookRequestDto dto) {
+        book.setTitle(dto.getTitle());
+        book.setIsbn(dto.getIsbn());
+        book.setSubtitle(dto.getSubtitle());
+        book.setDescription(dto.getDescription());
+        book.setPublicationDate(dto.getPublicationDate());
+        book.setPublisher(dto.getPublisher());
+        book.setPageCount(dto.getPageCount());
+        book.setLanguage(dto.getLanguage());
+        book.setFormat(dto.getFormat());
+        book.setShelfLocation(dto.getShelfLocation());
+        book.setTotalCopies(dto.getTotalCopies());
+        book.setAvailableCopies(dto.getAvailableCopies());
+    }
+
+    private void setBookRelations(BookEntity book, List<UUID> authorIds, List<UUID> categoryIds) {
+        if (authorIds != null) {
+            book.setAuthors(authorRepository.findAllById(authorIds));
+        }
+        if (categoryIds != null) {
+            book.setCategories(categoryRepository.findAllById(categoryIds));
+        }
     }
 
     private BookResponseDto mapToResponseDto(BookEntity book) {
@@ -173,6 +166,19 @@ public class BookService {
                 .status(book.getStatus())
                 .availableCopies(book.getAvailableCopies())
                 .averageRating(book.getAverageRating())
+                .authors(book.getAuthors() != null ? book.getAuthors().stream()
+                        .map(a -> AuthorResponseDto.builder()
+                                .id(a.getId())
+                                .firstName(a.getFirstName())
+                                .lastName(a.getLastName())
+                                .build())
+                        .toList() : null)
+                .categories(book.getCategories() != null ? book.getCategories().stream()
+                        .map(c -> CategoryResponseDto.builder()
+                                .id(c.getId())
+                                .name(c.getName())
+                                .build())
+                        .toList() : null)
                 .build();
     }
 }

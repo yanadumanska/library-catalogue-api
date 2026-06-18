@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,9 +28,9 @@ public class ReviewController {
     @PostMapping("/books/{bookId}/reviews")
     public ResponseEntity<ReviewResponseDto> addReview(
             @PathVariable UUID bookId,
-            @Valid @RequestBody ReviewRequestDto requestDto) {
-        // TODO: userId має братися з JWT токену (зробить Надя)
-        UUID userId = UUID.randomUUID();
+            @Valid @RequestBody ReviewRequestDto requestDto,
+            Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(reviewService.addReview(bookId, userId, requestDto));
     }
@@ -37,9 +38,9 @@ public class ReviewController {
     @PutMapping("/reviews/{reviewId}")
     public ResponseEntity<ReviewResponseDto> updateReview(
             @PathVariable UUID reviewId,
-            @Valid @RequestBody ReviewRequestDto requestDto) {
-        // TODO: userId з JWT
-        UUID userId = UUID.randomUUID();
+            @Valid @RequestBody ReviewRequestDto requestDto,
+            Authentication authentication) {
+        UUID userId = UUID.fromString(authentication.getName());
         return ResponseEntity.ok(reviewService.updateReview(reviewId, userId, requestDto));
     }
 

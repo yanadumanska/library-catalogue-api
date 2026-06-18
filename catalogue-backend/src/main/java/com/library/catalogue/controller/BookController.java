@@ -1,7 +1,12 @@
 package com.library.catalogue.controller;
 
+import com.library.catalogue.config.CachingConfig;
+import com.library.catalogue.dto.AuthorResponseDto;
 import com.library.catalogue.dto.BookResponseDto;
 import com.library.catalogue.dto.BookRequestDto;
+import com.library.catalogue.dto.CategoryResponseDto;
+import com.library.catalogue.enums.BookFormat;
+import com.library.catalogue.enums.BookStatus;
 import com.library.catalogue.service.BookService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +18,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,22 +32,56 @@ public class BookController {
 
     @GetMapping
     public ResponseEntity<Page<BookResponseDto>> getAllBooks(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "title:asc") String sort,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String author,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) BookFormat format,
+            @RequestParam(required = false) BookStatus status,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) BigDecimal minRating,
+            @RequestParam(required = false) LocalDate publishedAfter,
+            @RequestParam(required = false) LocalDate publishedBefore) {
 
-        Sort sort = sortDir.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        int pageIndex = Math.max(page - 1, 0);
+        Sort sorting = parseSort(sort);
+        Pageable pageable = PageRequest.of(pageIndex, limit, sorting);
 
-        return ResponseEntity.ok(bookService.getAllBooks(pageable));
+        return ResponseEntity.ok()
+                .cacheControl(CachingConfig.booksListCache())
+                .body(bookService.getBooksWithFilters(
+                        search, format, status, language, minRating,
+                        publishedAfter, publishedBefore, author, category, pageable));
+    }
+
+    private Sort parseSort(String sort) {
+        String[] parts = sort.split(":");
+        String field = parts[0];
+        String direction = parts.length > 1 ? parts[1] : "asc";
+        return direction.equalsIgnoreCase("desc")
+                ? Sort.by(field).descending()
+                : Sort.by(field).ascending();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<BookResponseDto> getBookById(@PathVariable UUID id) {
-        return ResponseEntity.ok(bookService.getBookById(id));
+        return ResponseEntity.ok()
+                .cacheControl(CachingConfig.bookCache())
+                .body(bookService.getBookById(id));
+    }
+
+    @GetMapping("/{id}/authors")
+    public ResponseEntity<List<AuthorResponseDto>> getBookAuthors(@PathVariable UUID id) {
+        BookResponseDto book = bookService.getBookById(id);
+        return ResponseEntity.ok(book.getAuthors());
+    }
+
+    @GetMapping("/{id}/categories")
+    public ResponseEntity<List<CategoryResponseDto>> getBookCategories(@PathVariable UUID id) {
+        BookResponseDto book = bookService.getBookById(id);
+        return ResponseEntity.ok(book.getCategories());
     }
 
     @PostMapping
@@ -56,34 +97,10 @@ public class BookController {
         return ResponseEntity.ok(bookService.updateBook(id, requestDto));
     }
 
-    @PatchMapping("/{id}")
-    public ResponseEntity<BookResponseDto> patchBook(
-            @PathVariable UUID id,
-            @RequestBody BookRequestDto requestDto) {
-        return ResponseEntity.ok(bookService.updateBook(id, requestDto));
-    }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBook(@PathVariable UUID id) {
         bookService.deleteBook(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/available")
-    public ResponseEntity<List<BookResponseDto>> getAvailableBooks() {
-        return ResponseEntity.ok(bookService.getAvailableBooks());
-    }
-
-    @PostMapping("/{id}/borrow")
-    public ResponseEntity<Void> borrowBook(@PathVariable UUID id) {
-        bookService.borrowBook(id);
-        return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/{id}/return")
-    public ResponseEntity<Void> returnBook(@PathVariable UUID id) {
-        bookService.returnBook(id);
-        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}/available")

@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -51,4 +53,7 @@ public class BookRequestDto {
 
     @Min(value = 0, message = "Available copies cannot be negative")
     private Integer availableCopies;
+
+    private List<UUID> authorIds;
+    private List<UUID> categoryIds;
 }
