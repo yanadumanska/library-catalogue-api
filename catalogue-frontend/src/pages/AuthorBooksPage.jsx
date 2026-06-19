@@ -33,12 +33,12 @@ function AuthorBooksPage() {
       <Link to="/authors" style={{ color: '#3498db', textDecoration: 'none' }}>
         ← Назад до авторів
       </Link>
-      <h1>✍️ {author.firstName} {author.lastName}</h1>
+      <h1> {author.firstName} {author.lastName}</h1>
       {author.nationality && <p className="book-meta"><strong>Національність:</strong> {author.nationality}</p>}
       {author.birthDate && <p className="book-meta"><strong>Дата народження:</strong> {author.birthDate}</p>}
       {author.biography && <p style={{ color: '#888', marginBottom: '20px' }}>{author.biography}</p>}
 
-      <h3>📚 Книги автора</h3>
+      <h3>Книги автора</h3>
       {books.length === 0 ? (
         <p>Немає книг цього автора</p>
       ) : (

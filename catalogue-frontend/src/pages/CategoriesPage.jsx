@@ -23,7 +23,7 @@ function CategoriesPage() {
 
   return (
     <div>
-      <h1>📂 Категорії</h1>
+      <h1>Категорії</h1>
       
       <button 
         onClick={() => setFlatView(!flatView)} 
@@ -37,7 +37,7 @@ function CategoriesPage() {
           marginBottom: '20px'
         }}
       >
-        {flatView ? '🌳 Дерево' : '📋 Плаский список'}
+        {flatView ? 'Дерево' : 'Плаский список'}
       </button>
 
       {flatView ? (

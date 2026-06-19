@@ -7,6 +7,11 @@ import CategoriesPage from './pages/CategoriesPage';
 import CategoryBooksPage from './pages/CategoryBooksPage';
 import AuthorsPage from './pages/AuthorsPage';
 import AuthorBooksPage from './pages/AuthorBooksPage';
+import BookDetailPage from './pages/BookDetailPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage';
+import AdminPage from './pages/AdminPage';
 import './App.css';
 
 function App() {
@@ -14,13 +19,18 @@ function App() {
     <Router>
       <Navbar />
       <div className="container">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/categories" element={<CategoriesPage />} />
-          <Route path="/categories/:categoryId/books" element={<CategoryBooksPage />} />
-          <Route path="/authors" element={<AuthorsPage />} />
-          <Route path="/authors/:authorId" element={<AuthorBooksPage />} />
-        </Routes>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/books/:bookId" element={<BookDetailPage />} />
+        <Route path="/categories/:categoryId/books" element={<CategoryBooksPage />} />
+        <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/authors/:authorId" element={<AuthorBooksPage />} />
+        <Route path="/authors" element={<AuthorsPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+      </Routes>
       </div>
     </Router>
   );
