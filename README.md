@@ -21,11 +21,10 @@ RESTful API + React для каталогу бібліотеки.
 - Reviews (CRUD + перерахунок рейтингу)
 - Caching (ETag, Cache-Control)
 
-### Nadiia Zinchuk
+
 - Users (CRUD + реєстрація)
 - JWT (access + refresh токени)
 - Borrowings (borrow, return, renew, overdue)
-- Reservations (reserve, cancel)
 - Admin (управління ролями)
 
 ---
