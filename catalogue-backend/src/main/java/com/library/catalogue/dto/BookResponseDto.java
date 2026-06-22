@@ -24,6 +24,7 @@ public class BookResponseDto {
     private BookFormat format;
     private BookStatus status;
     private Integer availableCopies;
+    private Integer totalCopies;
     private BigDecimal averageRating;
 
     private List<AuthorResponseDto> authors;

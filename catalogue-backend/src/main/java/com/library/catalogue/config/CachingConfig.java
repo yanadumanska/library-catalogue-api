@@ -22,15 +22,6 @@ public class CachingConfig {
         return new ConcurrentMapCacheManager("books", "book", "authors", "author",
                 "categoryTree", "categoryFlat", "category");
     }
-
-    public static CacheControl booksListCache() {
-        return CacheControl.maxAge(5, TimeUnit.MINUTES).cachePublic();
-    }
-
-    public static CacheControl bookCache() {
-        return CacheControl.maxAge(10, TimeUnit.MINUTES).cachePublic();
-    }
-
     public static CacheControl authorsCache() {
         return CacheControl.maxAge(15, TimeUnit.MINUTES).cachePublic();
     }

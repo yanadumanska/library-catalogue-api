@@ -1,6 +1,5 @@
 package com.library.catalogue.controller;
 
-import com.library.catalogue.config.CachingConfig;
 import com.library.catalogue.dto.AuthorResponseDto;
 import com.library.catalogue.dto.BookResponseDto;
 import com.library.catalogue.dto.BookRequestDto;
@@ -50,7 +49,6 @@ public class BookController {
         Pageable pageable = PageRequest.of(pageIndex, limit, sorting);
 
         return ResponseEntity.ok()
-                .cacheControl(CachingConfig.booksListCache())
                 .body(bookService.getBooksWithFilters(
                         search, format, status, language, minRating,
                         publishedAfter, publishedBefore, author, category, pageable));
@@ -67,9 +65,7 @@ public class BookController {
 
     @GetMapping("/{id}")
     public ResponseEntity<BookResponseDto> getBookById(@PathVariable UUID id) {
-        return ResponseEntity.ok()
-                .cacheControl(CachingConfig.bookCache())
-                .body(bookService.getBookById(id));
+        return ResponseEntity.ok().body(bookService.getBookById(id));
     }
 
     @GetMapping("/{id}/authors")

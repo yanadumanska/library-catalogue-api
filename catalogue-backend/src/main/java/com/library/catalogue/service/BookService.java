@@ -36,7 +36,6 @@ public class BookService {
     private final AuthorRepository authorRepository;
     private final CategoryRepository categoryRepository;
 
-    @Cacheable(value = "books", key = "'filter-' + #pageable.pageNumber + '-' + #pageable.pageSize + '-' + #search + '-' + #format + '-' + #status + '-' + #language + '-' + #minRating + '-' + #authorName + '-' + #categoryName")
     public Page<BookResponseDto> getBooksWithFilters(
             String search, BookFormat format, BookStatus status, String language,
             BigDecimal minRating, LocalDate publishedAfter, LocalDate publishedBefore,
@@ -47,7 +46,6 @@ public class BookService {
                 .map(this::mapToResponseDto);
     }
 
-    @Cacheable(value = "book", key = "#id")
     public BookResponseDto getBookById(UUID id) {
         return bookRepository.findById(id)
                 .map(this::mapToResponseDto)
@@ -59,13 +57,11 @@ public class BookService {
                 .orElseThrow(() -> new BookNotFoundException(id));
     }
 
-    @Cacheable(value = "books", key = "'author-' + #authorId + '-' + #pageable.pageNumber")
     public Page<BookResponseDto> getBooksByAuthor(UUID authorId, Pageable pageable) {
         return bookRepository.findBooksByAuthorId(authorId, pageable)
                 .map(this::mapToResponseDto);
     }
 
-    @Cacheable(value = "books", key = "'category-' + #categoryId + '-' + #pageable.pageNumber")
     public Page<BookResponseDto> getBooksByCategory(UUID categoryId, Pageable pageable) {
         return bookRepository.findBooksByCategoryId(categoryId, pageable)
                 .map(this::mapToResponseDto);
@@ -165,6 +161,7 @@ public class BookService {
                 .format(book.getFormat())
                 .status(book.getStatus())
                 .availableCopies(book.getAvailableCopies())
+                .totalCopies(book.getTotalCopies())
                 .averageRating(book.getAverageRating())
                 .authors(book.getAuthors() != null ? book.getAuthors().stream()
                         .map(a -> AuthorResponseDto.builder()

@@ -1,10 +1,11 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 function BookCard({ book }) {
   return (
+    <Link to={`/books/${book.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
     <div className="book-card">
       <h3>{book.title}</h3>
-      {book.subtitle && <p className="book-subtitle">{book.subtitle}</p>}
       
       <p className="book-meta"><strong>ISBN:</strong> {book.isbn}</p>
       <p className="book-meta"><strong>Формат:</strong> {book.format}</p>
@@ -20,6 +21,7 @@ function BookCard({ book }) {
         </p>
       )}
     </div>
+    </Link>
   );
 }
 

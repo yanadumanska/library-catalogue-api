@@ -5,6 +5,7 @@ import com.library.catalogue.dto.BorrowingResponseDto;
 import com.library.catalogue.entity.BookEntity;
 import com.library.catalogue.entity.BorrowingEntity;
 import com.library.catalogue.entity.UserEntity;
+import com.library.catalogue.enums.BookStatus;
 import com.library.catalogue.exception.BookNotFoundException;
 import com.library.catalogue.repository.BookRepository;
 import com.library.catalogue.repository.BorrowingRepository;
@@ -50,6 +51,13 @@ public class BorrowingService {
         if (book.getAvailableCopies() == null || book.getAvailableCopies() <= 0) {
             throw new RuntimeException("Book is not available: " + book.getTitle());
         }
+        boolean alreadyBorrowed = borrowingRepository
+                .findByBookIdAndUserIdAndStatus(request.getBookId(), userId, "ACTIVE")
+                .isPresent();
+
+        if (alreadyBorrowed) {
+            throw new RuntimeException("Ви вже взяли цю книгу");
+        }
 
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -72,6 +80,9 @@ public class BorrowingService {
                 .build();
 
         book.setAvailableCopies(book.getAvailableCopies() - 1);
+        if (book.getAvailableCopies() == 0) {
+            book.setStatus(BookStatus.BORROWED);
+        }
         bookRepository.save(book);
 
         BorrowingEntity saved = borrowingRepository.save(borrowing);

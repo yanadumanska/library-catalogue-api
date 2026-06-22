@@ -26,12 +26,42 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // CORS preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        
+                        // Public endpoints
                         .requestMatchers("/api/v1/users/register", "/api/v1/users/login").permitAll()
-                        .requestMatchers("/api/v1/health", "/swagger-ui/**", "/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**").permitAll()
+                        .requestMatchers("/api/v1/users/refresh-token").permitAll()
+
+                        // Public GET
+                        .requestMatchers(HttpMethod.GET, "/api/v1/books/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/authors/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                        
+                        // Reviews - GET public, POST/PUT/DELETE authenticated
                         .requestMatchers(HttpMethod.GET, "/api/v1/books/*/reviews").permitAll()
-                        .requestMatchers("/api/v1/books/**", "/api/v1/authors/**", "/api/v1/categories/**").permitAll()
+                        
+                        // Books - POST/PUT/DELETE only ADMIN/LIBRARIAN
+                        .requestMatchers(HttpMethod.POST, "/api/v1/books").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/books/**").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/books/**").hasAnyRole("ADMIN", "LIBRARIAN")
+                        
+                        // Authors - POST/PUT/DELETE only ADMIN/LIBRARIAN
+                        .requestMatchers(HttpMethod.POST, "/api/v1/authors").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/authors/**").hasAnyRole("ADMIN", "LIBRARIAN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/authors/**").hasAnyRole("ADMIN", "LIBRARIAN")
+                        
+                        // Categories - POST/PUT/DELETE only ADMIN
+                        .requestMatchers(HttpMethod.POST, "/api/v1/categories").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/categories/**").hasRole("ADMIN")
+                        
+                        // User endpoints
                         .requestMatchers("/api/v1/users/me").authenticated()
                         .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
+                        
+                        // All other requests need authentication
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
