@@ -17,6 +17,6 @@ public class SwaggerConfig {
                         .version("1.0")
                         .description("RESTful API для каталогу бібліотеки")
                         .contact(new Contact()
-                                .name("Yana Dumanska & Nadiia Zinchuk")));
+                                .name("Yana Dumanska")));
     }
 }
