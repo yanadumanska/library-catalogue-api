@@ -1,12 +1,12 @@
 spring.application.name=catalogue
 
 server.port=8080
-app.cors.allowed-origins=*
+app.cors.allowed-origins=http://localhost:3000
 
 # Database configuration
 spring.datasource.url=jdbc:postgresql://localhost:5432/library_db?options=-c%20TimeZone=UTC
-spring.datasource.username=${DB_USERNAME:postgres}
-spring.datasource.password=${DB_PASSWORD:123456}
+spring.datasource.username=postgres
+spring.datasource.password=123456
 spring.datasource.driver-class-name=org.postgresql.Driver
 spring.datasource.hikari.data-source-properties.assumeMinServerVersion=13
 
